@@ -1,6 +1,12 @@
 import numpy as np
 import pandas as pd
 import pycountry
+from sqlalchemy import create_engine
+
+# RDS 연결 (파이썬용 주소 형식)
+engine = create_engine(
+    "mysql+pymysql://admin:dhgkqwlwhf5@import-demand-server.cqr8wgqy24po.us-east-1.rds.amazonaws.com:3306/import_demand_db?charset=utf8mb4"
+)
 
 df = pd.read_csv(
     "trade-register.csv",
@@ -104,3 +110,5 @@ merged.to_csv(
 )
 
 print('저장 완료: merged.csv')
+
+merged.to_sql(name='merged', con=engine, if_exists='replace', index=False)
