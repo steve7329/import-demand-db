@@ -111,4 +111,4 @@ merged.to_csv(
 
 print('저장 완료: merged.csv')
 
-merged.to_sql(name='merged', con=engine, if_exists='replace', index=False)
+merged.to_sql(name='defense_demand_processed', con=engine, if_exists='replace', index=False)
