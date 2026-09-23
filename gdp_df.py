@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 from sqlalchemy import create_engine, text
+import pycountry
 
 # base_url을 기본 awd rds 서버로 설정하고 url로 연걸하는 base_engine 생성
 base_url = 'mysql+pymysql://admin:dhgkqwlwhf5@import-demand-server.cqr8wgqy24po.us-east-1.rds.amazonaws.com:3306/'
@@ -41,14 +42,40 @@ drop = [
 df_usd_raw = df_usd_raw[~df_usd_raw['Country'].isin(drop)]
 df_share_raw = df_share_raw[~df_share_raw['Country'].isin(drop)]
 
+def get_iso3(country_name):
+    special_mapping = {
+        'Korea, South': 'KOR', 'Korea, North': 'PRK', 'United States of America': 'USA',
+        'Türkiye': 'TUR', 'Congo, DR': 'COD', 'Congo, Republic': 'COG',
+        'Gambia, The': 'GMB', 'Eswatini': 'SWZ', 'Timor Leste': 'TLS',
+        'Cape Verde': 'CPV', 'Kyrgyz Republic': 'KGZ', 'Bosnia and Herzegovina': 'BIH',
+        'USSR': 'SUN', 'Yugoslavia': 'YUG', 'Czechoslovakia': 'CSK', 
+        'German Democratic Republic': 'DDR', 'Yemen, North': 'YEM'
+    }
+    
+    if country_name in special_mapping:
+        return special_mapping[country_name]
+    try:
+        # pycountry를 활용해 정확한 이름 탐색 후 ISO3 반환
+        res = pycountry.countries.get(name=country_name)
+        if res: return res.alpha_3
+        # 이름이 약간 다를 경우 유사도 검색(fuzzy)
+        return pycountry.countries.search_fuzzy(country_name)[0].alpha_3
+    except:
+        # 매핑 불가능한 국가는 None
+        return None
+
+# 4. Iso3 컬럼을 테이블의 가장 첫 번째 열(index 0)에 삽입
+print("국가 코드를 매핑하는 중입니다...")
+df_usd_raw.insert(0, 'Iso3', df_usd_raw['Country'].apply(get_iso3))
+df_share_raw.insert(0, 'Iso3', df_share_raw['Country'].apply(get_iso3))
 
 # GDP 계산 및 결측치 행 제거
 # 연도(정수형) 컬럼만 추출
 years = [col for col in df_usd_raw.columns if isinstance(col, int)]
 
 # Country를 인덱스로 지정
-df_usd_calc = df_usd_raw[['Country'] + years].copy().set_index('Country')
-df_share_calc = df_share_raw[['Country'] + years].copy().set_index('Country') 
+df_usd_calc = df_usd_raw[['Iso3', 'Country'] + years].copy().set_index(['Iso3', 'Country'])
+df_share_calc = df_share_raw[['Iso3', 'Country'] + years].copy().set_index(['Iso3', 'Country']) 
 
 # 특수문자('. .', 'xxx' 등)를 결측치(NaN)로 변환 후 숫자형으로 변경
 df_usd_calc = df_usd_calc.replace(['. .', 'xxx', '-', '...'], np.nan).apply(pd.to_numeric, errors='coerce')
