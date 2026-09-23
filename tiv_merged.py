@@ -112,3 +112,11 @@ merged.to_csv(
 print('저장 완료: merged.csv')
 
 merged.to_sql(name='defense_demand_processed', con=engine, if_exists='replace', index=False)
+
+# 점유율만 따로 저장 (국가명·지역 추가)
+names = df2[['Country_Code', 'Country', 'Region']].drop_duplicates('Country_Code')
+tiv_5y = names.merge(tiv_5y, on='Country_Code', how='right')
+tiv_5y = tiv_5y.sort_values(['Country', 'Year']).reset_index(drop=True)
+
+tiv_5y.to_sql(name='tiv_5y_share', con=engine, if_exists='replace', index=False)
+print("TIV 5년 점유율 테이블(tiv_5y_share)이 DB에 생성되었습니다!")
